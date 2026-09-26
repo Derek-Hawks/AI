@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Derek AI - Smart Document Summarizer & Knowledge Graph Extractor</title>
+    <!-- Tailwind CSS -->
+	<!-- PDF.js Library for Client-Side PDF Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+    // Initialize PDF.js worker URL
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        },
+                        darkbg: '#0f172a',
+                        darkcard: '#1e293b',
+                        darkborder: '#334155'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 114, 128, 0.8);
+        }
+        /* Glassmorphism utility */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-darkbg text-gray-800 dark:text-gray-100 min-h-screen flex flex-col transition-colors duration-200">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-gray-200 dark:border-darkborder bg-white/80 dark:bg-darkcard/80 sticky top-0 z-30 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/30">
+                    <i data-lucide="network" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                        Derek AI
+                    </h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Smart Document Summarizer & Knowledge Graph Extractor</p>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center space-x-3">
+                <!-- Preset Dropdown for Quick Demo -->
+                <div class="relative inline-block text-left">
+                    <select id="presetSelect" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-xs rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <option value="" disabled selected>⚡ Load Sample Preset</option>
+                        <option value="ai">AI & Quantum Computing</option>
+                        <option value="space">History of Space Exploration</option>
+                        <option value="biology">Biology: DNA & Genetics</option>
+                    </select>
+                </div>
+
+                <!-- Theme Toggle Button -->
+                <button id="themeToggleBtn" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+
+                <!-- Process Button -->
+                <button id="processBtn" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all active:scale-95">
+                    <i data-lucide="cpu" class="w-4 h-4"></i>
+                    <span>Analyze & Extract</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Input Panel & Controls (5 Cols) -->
+        <section class="lg:col-span-5 flex flex-col space-y-4">
+            
+            <!-- Document Input Box -->
+            <div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl p-5 shadow-sm flex flex-col flex-1">
+                <div class="flex items-center justify-between mb-3">
+                    <label class="text-sm font-semibold flex items-center space-x-2 text-gray-700 dark:text-gray-200">
+                        <i data-lucide="file-text" class="w-4 h-4 text-blue-500"></i>
+                        <span>Source Document</span>
+                    </label>
+                    <span id="wordCounter" class="text-xs text-gray-400 font-mono">0 words</span>
+                </div>
+
+                <!-- Drag & Drop / Upload Area -->
+                <div id="dropZone" class="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-xl p-4 text-center cursor-pointer mb-3 transition-colors bg-gray-50/50 dark:bg-gray-900/30">
+                    <input type="file" id="fileInput" accept=".pdf, .txt, .md, .markdown, application/pdf, text/plain,.json,.csv" class="hidden">
+                    <div class="flex flex-col items-center justify-center space-y-1">
+                        <i data-lucide="upload-cloud" class="w-6 h-6 text-gray-400"></i>
+                        <p class="text-xs text-gray-600 dark:text-gray-300 font-medium">Click to upload or drag & drop</p>
+                        <p class="text-[10px] text-gray-400">Supports .TXT, .MD, .JSON</p>
+                    </div>
+                </div>
+
+                <!-- Textarea Editor -->
+                <div class="relative flex-1 min-h-[220px]">
+                    <textarea id="documentInput" placeholder="Paste raw text here or select a preset sample document above..." class="w-full h-full p-3.5 text-xs font-mono bg-gray-50 dark:bg-gray-900/60 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none leading-relaxed"></textarea>
+                    <button id="clearBtn" title="Clear text" class="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 opacity-70 hover:opacity-100 transition-opacity">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Processing Status / Step Indicator Animation Panel -->
+            <div id="statusPanel" class="hidden bg-white dark:bg-darkcard border border-blue-100 dark:border-blue-900/40 rounded-2xl p-4 shadow-sm">
+                <div class="flex items-center space-x-3 mb-2">
+                    <div id="statusSpinner" class="animate-spin text-blue-600">
+                        <i data-lucide="loader-2" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h4 id="statusTitle" class="text-xs font-semibold text-gray-800 dark:text-gray-200">Processing Document...</h4>
+                        <p id="statusDesc" class="text-[11px] text-gray-500">Extracting tokens and identifying entity patterns.</p>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
+                    <div id="progressBar" class="bg-blue-600 h-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Metadata Analytics Dashboard Card -->
+            <div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl p-5 shadow-sm">
+                <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center space-x-2">
+                    <i data-lucide="bar-chart-2" class="w-4 h-4 text-purple-500"></i>
+                    <span>Document Metadata & Analytics</span>
+                </h3>
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <span class="text-[10px] text-gray-400 block mb-0.5">Reading Time</span>
+                        <span id="metaReadingTime" class="text-sm font-semibold text-gray-700 dark:text-gray-200">-- min</span>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <span class="text-[10px] text-gray-400 block mb-0.5">Readability Level</span>
+                        <span id="metaReadability" class="text-sm font-semibold text-gray-700 dark:text-gray-200">--</span>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <span class="text-[10px] text-gray-400 block mb-0.5">Sentiment</span>
+                        <span id="metaSentiment" class="text-sm font-semibold text-gray-700 dark:text-gray-200">--</span>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                        <span class="text-[10px] text-gray-400 block mb-0.5">Extracted Triples</span>
+                        <span id="metaTriplesCount" class="text-sm font-semibold text-blue-600 dark:text-blue-400">0</span>
+                    </div>
+                </div>
+
+                <!-- Topic Tag Cloud -->
+                <div>
+                    <span class="text-[11px] text-gray-400 block mb-2">Key Topics / Domain Tags</span>
+                    <div id="topicTags" class="flex flex-wrap gap-1.5">
+                        <span class="text-[10px] px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-400 rounded-md">Run extraction first...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Visualization & Summary Panels (7 Cols) -->
+        <section class="lg:col-span-7 flex flex-col space-y-6">
+
+            <!-- Top Right: Interactive Knowledge Graph Visualizer -->
+            <div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl p-5 shadow-sm flex flex-col relative overflow-hidden h-[440px]">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3 z-10">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="share-2" class="w-4 h-4 text-emerald-500"></i>
+                        <h2 class="text-sm font-semibold text-gray-800 dark:text-gray-200">Interactive Knowledge Graph</h2>
+                    </div>
+
+                    <!-- Graph Controls toolbar -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Node Filter Search -->
+                        <div class="relative">
+                            <input type="text" id="graphSearchInput" placeholder="Filter nodes..." class="w-28 sm:w-36 px-2.5 py-1 text-xs bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        </div>
+
+                        <!-- Physics Toggle -->
+                        <button id="togglePhysicsBtn" title="Toggle Graph Physics Simulation" class="p-1.5 text-xs bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                        </button>
+
+                        <!-- Zoom Controls -->
+                        <div class="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                            <button id="zoomInBtn" class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"><i data-lucide="zoom-in" class="w-3.5 h-3.5"></i></button>
+                            <button id="zoomResetBtn" class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-mono px-1">100%</button>
+                            <button id="zoomOutBtn" class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"><i data-lucide="zoom-out" class="w-3.5 h-3.5"></i></button>
+                        </div>
+
+                        <!-- Export Graph Image -->
+                        <button id="exportGraphBtn" title="Download Canvas Image" class="p-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Entity Color Legend Header -->
+                <div class="flex flex-wrap gap-3 text-[10px] text-gray-500 mb-2 z-10 border-b border-gray-100 dark:border-gray-800 pb-2">
+                    <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span><span>Tech/Concept</span></span>
+                    <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span><span>Person/Org</span></span>
+                    <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span><span>Location/Date</span></span>
+                    <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span><span>Science/Bio</span></span>
+                </div>
+
+                <!-- Canvas Visualizer Container -->
+                <div class="relative flex-1 w-full bg-gray-50/50 dark:bg-gray-900/40 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 cursor-grab active:cursor-grabbing">
+                    <canvas id="graphCanvas" class="w-full h-full block"></canvas>
+
+                    <!-- Node Detail Inspector Overlay -->
+                    <div id="nodeDetailOverlay" class="hidden absolute bottom-3 left-3 right-3 sm:right-auto sm:max-w-xs glass-panel border border-gray-200 dark:border-gray-700 p-3 rounded-xl shadow-xl z-20 text-xs">
+                        <div class="flex justify-between items-start mb-1">
+                            <span id="nodeCategoryTag" class="px-1.5 py-0.5 text-[9px] font-semibold rounded uppercase bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300">Technology</span>
+                            <button id="closeNodeDetail" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><i data-lucide="x" class="w-3 h-3"></i></button>
+                        </div>
+                        <h4 id="nodeTitle" class="font-bold text-gray-800 dark:text-gray-100 mb-1">Entity Name</h4>
+                        <p id="nodeDescription" class="text-gray-600 dark:text-gray-300 text-[11px] leading-tight mb-2">Connected entity details and relationships.</p>
+                        <div id="nodeConnections" class="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
+                            Connections: 0 links
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Right: Dynamic Summary & Triplet Explorer Tabs -->
+            <div class="bg-white dark:bg-darkcard border border-gray-200 dark:border-darkborder rounded-2xl p-5 shadow-sm flex flex-col flex-1">
+                <!-- Navigation Tabs -->
+                <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
+                    <div class="flex space-x-4">
+                        <button id="tabSummaryBtn" class="text-xs font-semibold pb-1 border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 transition-colors">
+                            AI Summary View
+                        </button>
+                        <button id="tabTripletsBtn" class="text-xs font-semibold pb-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                            Entity Triplets Table
+                        </button>
+                    </div>
+
+                    <!-- Summary Style Selector & Export -->
+                    <div id="summaryControls" class="flex items-center space-x-2">
+                        <select id="summaryTypeSelect" class="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs rounded-lg px-2.5 py-1 text-gray-700 dark:text-gray-200 focus:outline-none">
+                            <option value="executive">Executive Summary</option>
+                            <option value="bullets">Key Bullet Points</option>
+                            <option value="takeaways">Key Takeaways</option>
+                            <option value="tldr">TL;DR Highlight</option>
+                            <option value="concise">Concise Overview</option>
+                        </select>
+                        <button id="exportSummaryBtn" title="Export Summary text" class="p-1.5 text-gray-500 hover:text-blue-600 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                            <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Triplets Export -->
+                    <div id="tripletsControls" class="hidden flex items-center space-x-2">
+                        <input type="text" id="tripletSearchInput" placeholder="Search relationships..." class="px-2.5 py-1 text-xs bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none">
+                        <button id="exportTripletsBtn" title="Export JSON Triplets" class="p-1.5 text-gray-500 hover:text-blue-600 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Content 1: Summary Output -->
+                <div id="summaryTabContent" class="flex-1">
+                    <div id="summaryOutput" class="text-xs text-gray-700 dark:text-gray-300 leading-relaxed font-sans space-y-2 min-h-[160px] max-h-[260px] overflow-y-auto pr-2">
+                        <p class="text-gray-400 italic">Load a document and click "Analyze & Extract" to generate a summary.</p>
+                    </div>
+                </div>
+
+                <!-- Tab Content 2: Triplets Table Output -->
+                <div id="tripletsTabContent" class="hidden flex-1 max-h-[260px] overflow-y-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="sticky top-0 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-semibold border-b border-gray-200 dark:border-gray-700">
+                            <tr>
+                                <th class="p-2">Subject (Entity)</th>
+                                <th class="p-2">Predicate (Relationship)</th>
+                                <th class="p-2">Object (Target)</th>
+                                <th class="p-2 text-right">Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tripletsTableBody" class="divide-y divide-gray-100 dark:divide-gray-800 font-mono text-[11px]">
+                            <tr>
+                                <td colspan="4" class="p-4 text-center text-gray-400 font-sans italic">No entity relationships extracted yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Notification Toast Element -->
+    <div id="toast" class="fixed bottom-5 right-5 glass-panel border border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-100 px-4 py-2.5 rounded-xl shadow-2xl flex items-center space-x-2 text-xs transition-opacity duration-300 opacity-0 pointer-events-none z-50">
+        <i data-lucide="info" class="w-4 h-4 text-blue-500"></i>
+        <span id="toastMsg">Notification message</span>
+    </div>
+
+    <script>
+        /* Sample Preset Documents Database */
+        const PRESETS = {
+            ai: {
+                title: "AI & Quantum Computing Overview",
+                text: `Artificial Intelligence (AI) and Quantum Computing are converging to revolutionize modern technology. Traditional Machine Learning relies heavily on Deep Neural Networks to process immense datasets. However, quantum algorithms executed on Quantum Processors utilize Qubits and Superposition to achieve Quantum Supremacy. Companies like IBM and Google are leading the development of superconducting quantum chips. Meanwhile, Transformer Models developed by OpenAI and Anthropic are advancing Natural Language Processing (NLP). When integrated, Quantum Machine Learning accelerates drug discovery and cryptographic analysis, transforming computer science forever.`
+            },
+            space: {
+                title: "History of Space Exploration",
+                text: `The Apollo 11 mission conducted by NASA achieved the first human moon landing in 1969. Astronaut Neil Armstrong stepped onto the lunar surface, marking a historic achievement for humanity. Decades later, SpaceX pioneered reusable rocketry with the Falcon 9, drastically reducing the cost of launching payloads into Earth orbit. The James Webb Space Telescope (JWST), built through international collaboration between NASA and ESA, now observes distant galaxies near the edge of the observable universe. NASA's Artemis program aims to establish a permanent human presence on the Moon as a stepping stone toward future human missions to Mars.`
+            },
+            biology: {
+                title: "Biology: Cell Structure & DNA",
+                text: `Deoxyribonucleic Acid (DNA) resides within the Cell Nucleus and encodes genetic instructions for all living organisms. DNA features a iconic Double Helix structure formed by nucleotide base pairs: Adenine, Thymine, Cytosine, and Guanine. Ribosomes synthesize essential proteins by reading Messenger RNA (mRNA) transcribed from genes. Furthermore, Mitochondria generate cellular energy through ATP Synthesis. The revolutionary CRISPR-Cas9 gene-editing technology allows molecular biologists to precisely edit genomic sequences, promising breakthroughs in treating genetic disorders.`
+            }
+        };
+
+        // Application State Engine
+        const state = {
+            rawText: '',
+            extractedTriplets: [],
+            extractedNodes: [],
+            extractedLinks: [],
+            summaryData: {},
+            selectedNode: null,
+            zoomScale: 1,
+            panOffset: { x: 0, y: 0 },
+            physicsRunning: true,
+            theme: 'dark'
+        };
+
+        // DOM Elements Map
+        const elements = {
+            documentInput: document.getElementById('documentInput'),
+            presetSelect: document.getElementById('presetSelect'),
+            wordCounter: document.getElementById('wordCounter'),
+            fileInput: document.getElementById('fileInput'),
+            dropZone: document.getElementById('dropZone'),
+            processBtn: document.getElementById('processBtn'),
+            clearBtn: document.getElementById('clearBtn'),
+            statusPanel: document.getElementById('statusPanel'),
+            statusTitle: document.getElementById('statusTitle'),
+            statusDesc: document.getElementById('statusDesc'),
+            progressBar: document.getElementById('progressBar'),
+            graphCanvas: document.getElementById('graphCanvas'),
+            summaryTypeSelect: document.getElementById('summaryTypeSelect'),
+            summaryOutput: document.getElementById('summaryOutput'),
+            tripletsTableBody: document.getElementById('tripletsTableBody'),
+            tabSummaryBtn: document.getElementById('tabSummaryBtn'),
+            tabTripletsBtn: document.getElementById('tabTripletsBtn'),
+            summaryTabContent: document.getElementById('summaryTabContent'),
+            tripletsTabContent: document.getElementById('tripletsTabContent'),
+            summaryControls: document.getElementById('summaryControls'),
+            tripletsControls: document.getElementById('tripletsControls'),
+            metaReadingTime: document.getElementById('metaReadingTime'),
+            metaReadability: document.getElementById('metaReadability'),
+            metaSentiment: document.getElementById('metaSentiment'),
+            metaTriplesCount: document.getElementById('metaTriplesCount'),
+            topicTags: document.getElementById('topicTags'),
+            themeToggleBtn: document.getElementById('themeToggleBtn'),
+            graphSearchInput: document.getElementById('graphSearchInput'),
+            tripletSearchInput: document.getElementById('tripletSearchInput'),
+            togglePhysicsBtn: document.getElementById('togglePhysicsBtn'),
+            zoomInBtn: document.getElementById('zoomInBtn'),
+            zoomOutBtn: document.getElementById('zoomOutBtn'),
+            zoomResetBtn: document.getElementById('zoomResetBtn'),
+            exportGraphBtn: document.getElementById('exportGraphBtn'),
+            exportSummaryBtn: document.getElementById('exportSummaryBtn'),
+            exportTripletsBtn: document.getElementById('exportTripletsBtn'),
+            nodeDetailOverlay: document.getElementById('nodeDetailOverlay'),
+            nodeCategoryTag: document.getElementById('nodeCategoryTag'),
+            nodeTitle: document.getElementById('nodeTitle'),
+            nodeDescription: document.getElementById('nodeDescription'),
+            nodeConnections: document.getElementById('nodeConnections'),
+            closeNodeDetail: document.getElementById('closeNodeDetail'),
+            toast: document.getElementById('toast'),
+            toastMsg: document.getElementById('toastMsg')
+        };
+
+        // Utility Toast System
+        function showToast(message) {
+            elements.toastMsg.innerText = message;
+            elements.toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                elements.toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // Initialize Theme Mode
+        function initTheme() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+                state.theme = 'dark';
+            } else {
+                document.documentElement.classList.remove('dark');
+                state.theme = 'light';
+            }
+        }
+
+        // Live Word Count Update
+        function updateWordCount() {
+            const text = elements.documentInput.value.trim();
+            const words = text ? text.split(/\s+/).length : 0;
+            elements.wordCounter.innerText = `${words} words`;
+            state.rawText = text;
+        }
+
+        // Preset Document Loader
+        elements.presetSelect.addEventListener('change', (e) => {
+            const key = e.target.value;
+            if (PRESETS[key]) {
+                elements.documentInput.value = PRESETS[key].text;
+                updateWordCount();
+                showToast(`Loaded preset: ${PRESETS[key].title}`);
+            }
+        });
+
+// File Upload Handlers
+elements.dropZone.addEventListener('click', () => elements.fileInput.click());
+elements.fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        try {
+            showToast('Reading PDF file...');
+            const arrayBuffer = await file.arrayBuffer();
+            
+            // Load PDF via PDF.js
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let extractedText = '';
+
+            // Loop through each page and extract text content
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const tokenizedText = await page.getTextContent();
+                const pageText = tokenizedText.items.map(item => item.str).join(' ');
+                extractedText += `--- Page ${i} ---\n` + pageText + '\n\n';
+            }
+
+            elements.documentInput.value = extractedText.trim();
+            updateWordCount();
+            showToast(`Successfully extracted ${pdf.numPages} pages from ${file.name}`);
+        } catch (error) {
+            console.error('PDF parsing error:', error);
+            showToast('Failed to parse PDF. File may be corrupted or password-protected.');
+        }
+    } else {
+        // Fallback for plain text, markdown, or JSON files
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            elements.documentInput.value = evt.target.result;
+            updateWordCount();
+            showToast(`Loaded file: ${file.name}`);
+        };
+        reader.readAsText(file);
+    }
+});
+    elements.dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        elements.dropZone.classList.add('border-blue-500');
+    });
+
+    elements.dropZone.addEventListener('dragleave', () => {
+        elements.dropZone.classList.remove('border-blue-500');
+    });
+
+    elements.dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        elements.dropZone.classList.remove('border-blue-500');
+        if (e.dataTransfer.files.length) {
+            elements.fileInput.files = e.dataTransfer.files;
+            elements.fileInput.dispatchEvent(new Event('change'));
+    }
+});
+
+        // Clear Button
+        elements.clearBtn.addEventListener('click', () => {
+            elements.documentInput.value = '';
+            updateWordCount();
+        });
+
+        elements.documentInput.addEventListener('input', updateWordCount);
+
+        // Simulated AI Document Parser Engine
+        async function runAnalysisPipeline() {
+            const text = elements.documentInput.value.trim();
+            if (!text) {
+                showToast('Please enter text or select a preset document.');
+                return;
+            }
+
+            // Show Loading Panel
+            elements.statusPanel.classList.remove('hidden');
+            elements.progressBar.style.width = '10%';
+            elements.statusTitle.innerText = 'Tokenizing Text...';
+            elements.statusDesc.innerText = 'Parsing sentence structures and identifying linguistic features.';
+
+            await sleep(400);
+            elements.progressBar.style.width = '40%';
+            elements.statusTitle.innerText = 'Extracting Entities & Relations...';
+            elements.statusDesc.innerText = 'Building (Subject, Predicate, Object) knowledge graph triplets.';
+
+            const triplets = extractTripletsFromText(text);
+            const metadata = calculateMetadata(text, triplets);
+            const summaries = generateSummaries(text, triplets);
+
+            await sleep(400);
+            elements.progressBar.style.width = '75%';
+            elements.statusTitle.innerText = 'Constructing Knowledge Graph...';
+            elements.statusDesc.innerText = 'Computing force-directed graph node layouts and visual hierarchy.';
+
+            // Render Results
+            state.extractedTriplets = triplets;
+            state.summaryData = summaries;
+            buildGraphFromTriplets(triplets);
+            renderMetadata(metadata);
+            renderSummary();
+            renderTripletsTable(triplets);
+
+            await sleep(300);
+            elements.progressBar.style.width = '100%';
+            await sleep(200);
+            elements.statusPanel.classList.add('hidden');
+            showToast('Analysis complete! Graph and summary generated.');
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Rules-based/Heuristic Extractor for Entities and Relationships
+        function extractTripletsFromText(text) {
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+            const triplets = [];
+            const commonVerbs = [
+                'relies on', 'utilize', 'achieve', 'leading', 'developing',
+                'advancing', 'accelerates', 'conducted', 'achieved', 'stepped',
+                'pioneered', 'reducing', 'observes', 'aims', 'resides',
+                'encodes', 'features', 'synthesize', 'generate', 'allows',
+                'transforms', 'creates', 'supports', 'built', 'integrates'
+            ];
+
+            const categoryMap = {
+                'AI': 'Tech', 'Quantum Computing': 'Tech', 'Machine Learning': 'Tech',
+                'Deep Neural Networks': 'Tech', 'Quantum Processors': 'Tech', 'Qubits': 'Tech',
+                'Quantum Supremacy': 'Concept', 'IBM': 'Org', 'Google': 'Org',
+                'Transformer Models': 'Tech', 'OpenAI': 'Org', 'Anthropic': 'Org',
+                'Natural Language Processing': 'Tech', 'Quantum Machine Learning': 'Tech',
+                'Apollo 11': 'Tech', 'NASA': 'Org', 'Neil Armstrong': 'Person',
+                'SpaceX': 'Org', 'Falcon 9': 'Tech', 'Earth orbit': 'Location',
+                'James Webb Space Telescope': 'Tech', 'ESA': 'Org', 'Artemis program': 'Tech',
+                'Moon': 'Location', 'Mars': 'Location', 'DNA': 'Bio',
+                'Cell Nucleus': 'Bio', 'Double Helix': 'Bio', 'Ribosomes': 'Bio',
+                'mRNA': 'Bio', 'Mitochondria': 'Bio', 'ATP Synthesis': 'Bio',
+                'CRISPR-Cas9': 'Bio'
+            };
+
+            sentences.forEach(sentence => {
+                const s = sentence.trim();
+                // Simple heuristic sentence splitting for entity extraction
+                for (let v of commonVerbs) {
+                    if (s.toLowerCase().includes(v)) {
+                        const parts = s.split(new RegExp(v, 'i'));
+                        if (parts.length >= 2) {
+                            let subj = cleanEntity(parts[0]);
+                            let obj = cleanEntity(parts[1]);
+
+                            if (subj && obj) {
+                                triplets.push({
+                                    subject: subj,
+                                    predicate: v,
+                                    object: obj,
+                                    confidence: (0.82 + Math.random() * 0.16).toFixed(2),
+                                    subjCategory: categoryMap[subj] || getCategoryByWord(subj),
+                                    objCategory: categoryMap[obj] || getCategoryByWord(obj)
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Fallback default triplets if text is completely custom and unparsed by regex
+            if (triplets.length === 0) {
+                const words = text.split(/\s+/).filter(w => w.length > 4);
+                if (words.length >= 4) {
+                    triplets.push({
+                        subject: cleanEntity(words[0]),
+                        predicate: 'associated with',
+                        object: cleanEntity(words[2]),
+                        confidence: '0.85',
+                        subjCategory: 'Concept',
+                        objCategory: 'Concept'
+                    });
+                }
+            }
+
+            return triplets.slice(0, 15); // Limit max graph nodes for performance clarity
+        }
+
+        function cleanEntity(str) {
+            return str.replace(/[^a-zA-Z0-9\s]/g, '')
+                      .split(/\s+/)
+                      .slice(-3)
+                      .join(' ')
+                      .trim() || 'Entity';
+        }
+
+        function getCategoryByWord(word) {
+            const w = word.toLowerCase();
+            if (w.includes('data') || w.includes('tech') || w.includes('model') || w.includes('system')) return 'Tech';
+            if (w.includes('dna') || w.includes('cell') || w.includes('gene') || w.includes('bio')) return 'Bio';
+            if (w.includes('nasa') || w.includes('spacex') || w.includes('company') || w.includes('group')) return 'Org';
+            if (w.includes('moon') || w.includes('mars') || w.includes('earth') || w.includes('station')) return 'Location';
+            return 'Concept';
+        }
+
+        // Calculate Analytics & Readability
+        function calculateMetadata(text, triplets) {
+            const words = text.trim().split(/\s+/).length;
+            const sentences = (text.match(/[^.!?]+[.!?]+/g) || [text]).length;
+            const readingTimeMin = Math.max(1, Math.ceil(words / 200));
+
+            // Flesch Readability Score approximation
+            const avgWordsPerSentence = words / sentences;
+            let readability = "Moderate";
+            if (avgWordsPerSentence > 20) readability = "Advanced / Academic";
+            else if (avgWordsPerSentence < 12) readability = "Accessible";
+
+            // Sentiment heuristic
+            const positiveWords = ['pioneered', 'achieved', 'revolutionize', 'advancing', 'breakthroughs', 'leading'];
+            let sentimentCount = 0;
+            positiveWords.forEach(pw => { if (text.toLowerCase().includes(pw)) sentimentCount++; });
+            const sentiment = sentimentCount > 1 ? "Positive / Optimistic" : "Informative / Neutral";
+
+            // Extract unique top topics
+            const topicSet = new Set();
+            triplets.forEach(t => {
+                topicSet.add(t.subject);
+                topicSet.add(t.object);
+            });
+            const topics = Array.from(topicSet).slice(0, 6);
+
+            return {
+                words,
+                readingTime: `${readingTimeMin} min read`,
+                readability,
+                sentiment,
+                tripletsCount: triplets.length,
+                topics
+            };
+        }
+
+        // Generate Multiple AI Summarization Modes
+        function generateSummaries(text, triplets) {
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+            const firstTwo = sentences.slice(0, 2).join(' ');
+            const keyEntities = triplets.map(t => `${t.subject} (${t.predicate} ${t.object})`).join('; ');
+
+            return {
+                executive: `<strong>Executive Overview:</strong> ${firstTwo} <br/><br/><strong>Key Domain Discoveries:</strong> Key relationships identified include ${keyEntities}.`,
+                bullets: sentences.map(s => `• ${s.trim()}`).join('<br/>'),
+                takeaways: `<strong>Core Key Takeaways:</strong><br/>1. ${sentences[0] || text}<br/>2. Key structural interaction observed: ${triplets[0] ? triplets[0].subject + ' ' + triplets[0].predicate + ' ' + triplets[0].object : 'Primary concept linkages.'}<br/>3. Domain application demonstrates promising future developments.`,
+                tldr: `<strong>TL;DR:</strong> ${sentences[0] || text}`,
+                concise: `${text.substring(0, Math.min(200, text.length))}...`
+            };
+        }
+
+        function renderMetadata(meta) {
+            elements.metaReadingTime.innerText = meta.readingTime;
+            elements.metaReadability.innerText = meta.readability;
+            elements.metaSentiment.innerText = meta.sentiment;
+            elements.metaTriplesCount.innerText = meta.tripletsCount;
+
+            elements.topicTags.innerHTML = meta.topics.map(t => `
+                <span class="text-[10px] px-2 py-0.5 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded-md font-medium border border-blue-200 dark:border-blue-800">${t}</span>
+            `).join('');
+        }
+
+        function renderSummary() {
+            const type = elements.summaryTypeSelect.value;
+            elements.summaryOutput.innerHTML = state.summaryData[type] || state.summaryData.executive || 'No summary available.';
+        }
+
+        function renderTripletsTable(triplets) {
+            const filter = elements.tripletSearchInput.value.toLowerCase();
+            const filtered = triplets.filter(t => 
+                t.subject.toLowerCase().includes(filter) || 
+                t.predicate.toLowerCase().includes(filter) || 
+                t.object.toLowerCase().includes(filter)
+            );
+
+            if (filtered.length === 0) {
+                elements.tripletsTableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">No matching relationships found.</td></tr>`;
+                return;
+            }
+
+            elements.tripletsTableBody.innerHTML = filtered.map(t => `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <td class="p-2 font-semibold text-blue-600 dark:text-blue-400">${t.subject}</td>
+                    <td class="p-2 text-gray-500 dark:text-gray-400">${t.predicate}</td>
+                    <td class="p-2 text-purple-600 dark:text-purple-400">${t.object}</td>
+                    <td class="p-2 text-right text-emerald-600 font-mono">${(t.confidence * 100).toFixed(0)}%</td>
+                </tr>
+            `).join('');
+        }
+
+        // Knowledge Graph Physics & Render Engine
+        let canvas = elements.graphCanvas;
+        let ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+
+        function getCategoryColor(category) {
+            switch (category) {
+                case 'Tech': return '#3b82f6'; // Blue
+                case 'Person':
+                case 'Org': return '#10b981'; // Emerald
+                case 'Location': return '#f59e0b'; // Amber
+                case 'Bio': return '#a855f7'; // Purple
+                default: return '#6366f1'; // Indigo
+            }
+        }
+
+        function buildGraphFromTriplets(triplets) {
+            const nodeMap = new Map();
+            const links = [];
+
+            triplets.forEach((t, index) => {
+                if (!nodeMap.has(t.subject)) {
+                    nodeMap.set(t.subject, {
+                        id: t.subject,
+                        category: t.subjCategory || 'Concept',
+                        x: (Math.random() - 0.5) * 200 + canvas.width / 2,
+                        y: (Math.random() - 0.5) * 200 + canvas.height / 2,
+                        vx: 0,
+                        vy: 0,
+                        radius: 18
+                    });
+                }
+                if (!nodeMap.has(t.object)) {
+                    nodeMap.set(t.object, {
+                        id: t.object,
+                        category: t.objCategory || 'Concept',
+                        x: (Math.random() - 0.5) * 200 + canvas.width / 2,
+                        y: (Math.random() - 0.5) * 200 + canvas.height / 2,
+                        vx: 0,
+                        vy: 0,
+                        radius: 16
+                    });
+                }
+
+                links.push({
+                    source: nodeMap.get(t.subject),
+                    target: nodeMap.get(t.object),
+                    label: t.predicate
+                });
+            });
+
+            state.extractedNodes = Array.from(nodeMap.values());
+            state.extractedLinks = links;
+        }
+
+        // Force-Directed Physics Simulation Loop
+        function updatePhysics() {
+            if (!state.physicsRunning || state.extractedNodes.length === 0) return;
+
+            const nodes = state.extractedNodes;
+            const links = state.extractedLinks;
+
+            // Repulsion between nodes
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    let dx = nodes[j].x - nodes[i].x;
+                    let dy = nodes[j].y - nodes[i].y;
+                    let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    if (dist < 180) {
+                        let force = (180 - dist) / dist * 0.08;
+                        nodes[i].vx -= dx * force;
+                        nodes[i].vy -= dy * force;
+                        nodes[j].vx += dx * force;
+                        nodes[j].vy += dy * force;
+                    }
+                }
+            }
+
+            // Link attraction forces
+            links.forEach(link => {
+                let dx = link.target.x - link.source.x;
+                let dy = link.target.y - link.source.y;
+                let dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                let force = (dist - 100) * 0.02;
+                link.source.vx += (dx / dist) * force;
+                link.source.vy += (dy / dist) * force;
+                link.target.vx -= (dx / dist) * force;
+                link.target.vy -= (dy / dist) * force;
+            });
+
+            // Center gravity & position dampening
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            nodes.forEach(node => {
+                if (node.isDragging) return;
+                node.vx += (centerX - node.x) * 0.001;
+                node.vy += (centerY - node.y) * 0.001;
+                node.vx *= 0.85;
+                node.vy *= 0.85;
+                node.x += node.vx;
+                node.y += node.vy;
+            });
+        }
+
+        // Canvas Rendering Frame
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(state.panOffset.x, state.panOffset.y);
+            ctx.scale(state.zoomScale, state.zoomScale);
+
+            const filter = elements.graphSearchInput.value.toLowerCase();
+
+            // Draw Links
+            state.extractedLinks.forEach(link => {
+                ctx.beginPath();
+                ctx.moveTo(link.source.x, link.source.y);
+                ctx.lineTo(link.target.x, link.target.y);
+                ctx.strokeStyle = state.theme === 'dark' ? 'rgba(148, 163, 184, 0.25)' : 'rgba(100, 116, 139, 0.25)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Draw Link Predicate Label
+                const midX = (link.source.x + link.target.x) / 2;
+                const midY = (link.source.y + link.target.y) / 2;
+                ctx.font = '9px Inter, sans-serif';
+                ctx.fillStyle = state.theme === 'dark' ? '#94a3b8' : '#64748b';
+                ctx.fillText(link.label, midX, midY - 3);
+            });
+
+            // Draw Nodes
+            state.extractedNodes.forEach(node => {
+                const matches = filter && node.id.toLowerCase().includes(filter);
+
+                // Glow Effect for Selected or Filtered Nodes
+                if (node === state.selectedNode || matches) {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, node.radius + 6, 0, Math.PI * 2);
+                    ctx.fillStyle = matches ? 'rgba(234, 179, 8, 0.3)' : 'rgba(59, 130, 246, 0.3)';
+                    ctx.fill();
+                }
+
+                // Node Circle
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                ctx.fillStyle = getCategoryColor(node.category);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Node Text Label
+                ctx.font = '10px Inter, sans-serif';
+                ctx.fillStyle = state.theme === 'dark' ? '#f1f5f9' : '#0f172a';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.id, node.x, node.y + node.radius + 12);
+            });
+
+            ctx.restore();
+            updatePhysics();
+            requestAnimationFrame(drawGraph);
+        }
+
+        let isPanning = false;
+        let startPan = { x: 0, y: 0 };
+        let draggedNode = null;
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left - state.panOffset.x) / state.zoomScale;
+            const mouseY = (e.clientY - rect.top - state.panOffset.y) / state.zoomScale;
+
+            // Check node click
+            const clickedNode = state.extractedNodes.find(n => {
+                const dx = n.x - mouseX;
+                const dy = n.y - mouseY;
+                return Math.sqrt(dx * dx + dy * dy) <= n.radius;
+            });
+
+            if (clickedNode) {
+                draggedNode = clickedNode;
+                draggedNode.isDragging = true;
+                selectNode(clickedNode);
+            } else {
+                isPanning = true;
+                startPan = { x: e.clientX - state.panOffset.x, y: e.clientY - state.panOffset.y };
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (draggedNode) {
+                const rect = canvas.getBoundingClientRect();
+                draggedNode.x = (e.clientX - rect.left - state.panOffset.x) / state.zoomScale;
+                draggedNode.y = (e.clientY - rect.top - state.panOffset.y) / state.zoomScale;
+            } else if (isPanning) {
+                state.panOffset.x = e.clientX - startPan.x;
+                state.panOffset.y = e.clientY - startPan.y;
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (draggedNode) draggedNode.isDragging = false;
+            draggedNode = null;
+            isPanning = false;
+        });
+
+        // Zoom Controls
+        elements.zoomInBtn.addEventListener('click', () => state.zoomScale = Math.min(2.5, state.zoomScale + 0.15));
+        elements.zoomOutBtn.addEventListener('click', () => state.zoomScale = Math.max(0.4, state.zoomScale - 0.15));
+        elements.zoomResetBtn.addEventListener('click', () => {
+            state.zoomScale = 1;
+            state.panOffset = { x: 0, y: 0 };
+        });
+
+        // Toggle Physics Simulation
+        elements.togglePhysicsBtn.addEventListener('click', () => {
+            state.physicsRunning = !state.physicsRunning;
+            elements.togglePhysicsBtn.classList.toggle('bg-blue-600', !state.physicsRunning);
+            elements.togglePhysicsBtn.classList.toggle('text-white', !state.physicsRunning);
+            showToast(state.physicsRunning ? 'Physics simulation resumed.' : 'Physics simulation paused.');
+        });
+
+        // Select Node Detail Overlay
+        function selectNode(node) {
+            state.selectedNode = node;
+            const connectedLinks = state.extractedLinks.filter(l => l.source === node || l.target === node);
+
+            elements.nodeCategoryTag.innerText = node.category;
+            elements.nodeTitle.innerText = node.id;
+            elements.nodeDescription.innerText = `Extracted entity belongs to ${node.category} domain with key relationship paths.`;
+            elements.nodeConnections.innerText = `Connections: ${connectedLinks.length} active triplets`;
+            elements.nodeDetailOverlay.classList.remove('hidden');
+        }
+
+        elements.closeNodeDetail.addEventListener('click', () => {
+            elements.nodeDetailOverlay.classList.add('hidden');
+            state.selectedNode = null;
+        });
+
+        // Tab Switchers
+        elements.tabSummaryBtn.addEventListener('click', () => {
+            elements.tabSummaryBtn.classList.add('border-blue-600', 'text-blue-600');
+            elements.tabTripletsBtn.classList.remove('border-blue-600', 'text-blue-600');
+            elements.tabTripletsBtn.classList.add('border-transparent', 'text-gray-500');
+
+            elements.summaryTabContent.classList.remove('hidden');
+            elements.tripletsTabContent.classList.add('hidden');
+            elements.summaryControls.classList.remove('hidden');
+            elements.tripletsControls.classList.add('hidden');
+        });
+
+        elements.tabTripletsBtn.addEventListener('click', () => {
+            elements.tabTripletsBtn.classList.add('border-blue-600', 'text-blue-600');
+            elements.tabSummaryBtn.classList.remove('border-blue-600', 'text-blue-600');
+            elements.tabSummaryBtn.classList.add('border-transparent', 'text-gray-500');
+
+            elements.tripletsTabContent.classList.remove('hidden');
+            elements.summaryTabContent.classList.add('hidden');
+            elements.tripletsControls.classList.remove('hidden');
+            elements.summaryControls.classList.add('hidden');
+        });
+
+        // Dynamic Filtering Event Handlers
+        elements.summaryTypeSelect.addEventListener('change', renderSummary);
+        elements.tripletSearchInput.addEventListener('input', () => renderTripletsTable(state.extractedTriplets));
+
+        // Theme Toggle Handler
+        elements.themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            state.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        });
+
+        // Export Canvas PNG Image
+        elements.exportGraphBtn.addEventListener('click', () => {
+            const imageURL = canvas.toDataURL('image/png');
+            const downloadLink = document.createElement('a');
+            downloadLink.href = imageURL;
+            downloadLink.download = 'docugraph-knowledge-graph.png';
+            downloadLink.click();
+            showToast('Knowledge graph image downloaded.');
+        });
+
+        // Export Summary Text
+        elements.exportSummaryBtn.addEventListener('click', () => {
+            const textContent = elements.summaryOutput.innerText;
+            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'document-summary.txt';
+            link.click();
+            showToast('Summary exported to file.');
+        });
+
+        // Export Triplets JSON
+        elements.exportTripletsBtn.addEventListener('click', () => {
+            const jsonContent = JSON.stringify(state.extractedTriplets, null, 2);
+            const blob = new Blob([jsonContent], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'knowledge-triplets.json';
+            link.click();
+            showToast('Triplets JSON data exported.');
+        });
+
+        // Application Start Event Listeners
+        elements.processBtn.addEventListener('click', runAnalysisPipeline);
+
+        window.onload = function () {
+            initTheme();
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Load initial preset document
+            elements.presetSelect.value = 'ai';
+            elements.documentInput.value = PRESETS.ai.text;
+            updateWordCount();
+
+            // Render Lucide icons
+            if (window.lucide) lucide.createIcons();
+
+            // Run initial setup animation & loop
+            runAnalysisPipeline();
+            drawGraph();
+        };
+    </script>
+</body>
+</html>
